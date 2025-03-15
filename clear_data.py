@@ -3,40 +3,38 @@ from psycopg2 import sql
 
 # Параметры подключения к базе данных
 DB_HOST = "localhost"  # Хост
-DB_NAME = "museum"     # Имя базы данных
+DB_NAME = "articles"   # Имя базы данных "museum"
 DB_USER = "admin"      # Имя пользователя
 DB_PASSWORD = "secret" # Пароль
 
 # Создаем подключение к базе данных
-def create_connection():
+def connect_db():
     return psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
+        dbname="articles",  # Имя вашей базы данных
+        user="admin",  # Имя пользователя
+        password="secret",  # Ваш пароль
+        host="localhost",  # Адрес хоста
+        port="5432"  # Порт PostgreSQL
     )
 
-# Очистка данных в таблицах и в flyway_schema_history
-def clear_data():
-    try:
-        conn = create_connection()
-        cursor = conn.cursor()
+# Функция для очистки базы данных
+def clean_db():
+    conn = connect_db()
+    cursor = conn.cursor()
 
-        # Очистка таблиц
-        tables = ['visitor', 'exhibit', 'tour']
-        for table in tables:
-            cursor.execute(sql.SQL("TRUNCATE TABLE {} CASCADE;").format(sql.Identifier(table)))
-            print(f"Таблица {table} очищена.")
+    # Очистка таблиц download, article, user
+    cursor.execute("TRUNCATE TABLE t_download, t_article, t_user RESTART IDENTITY CASCADE;")
+    print("Таблицы t_download, t_article, t_user очищены")
 
-        # Очистка таблицы flyway_schema_history
-        cursor.execute("TRUNCATE TABLE flyway_schema_history;")
-        print("Таблица flyway_schema_history очищена.")
+#     # Очистка таблицы flyway_schema_history
+#     cursor.execute("TRUNCATE TABLE flyway_schema_history RESTART IDENTITY CASCADE;") # TRUNCATE => DELETE FROM
+#     print("Таблица flyway_schema_history очищена")
 
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Ошибка при очистке данных: {e}")
+    # Сохраняем изменения и закрываем соединение
+    conn.commit()
+    cursor.close()
+    conn.close()
 
+# Запуск очистки
 if __name__ == "__main__":
-    clear_data()
+    clean_db()

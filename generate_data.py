@@ -1,76 +1,92 @@
 import psycopg2
-from faker import Faker
+import uuid
 import random
+import faker
 from datetime import datetime, timedelta
 
-# Подключение к БД
-conn = psycopg2.connect(
-    dbname="museum",
-    user="admin",
-    password="secret",
-    host="localhost",
-    port="5432"
-)
-cursor = conn.cursor()
+# Подключение к базе данных PostgreSQL
+def connect_db():
+    return psycopg2.connect(
+        dbname="articles",  # Имя вашей базы данных
+        user="admin",      # Имя пользователя
+        password="secret", # Ваш пароль
+        host="localhost",  # Адрес хоста
+        port="5432"        # Порт PostgreSQL
+    )
 
-fake = Faker()
-
-# Функция для заполнения таблицы Visitor
-def insert_visitors(n):
-    visitors = []
+# Функция для генерации случайных данных для таблицы t_user
+def generate_users(n):
+    fake = faker.Faker()
+    users = []
     for _ in range(n):
-        full_name = fake.name()
-        age = random.randint(10, 80)
-        ticket_type = random.choice(["DISCOUNT", "FULL"])
-        visitors.append((full_name, age, ticket_type))
+        user_id = str(uuid.uuid4())
+        login = fake.user_name()
+        university = fake.company()
+        subscription_end_date = (datetime.now() + timedelta(days=random.randint(30, 365))).date()
+        users.append((user_id, login, university, subscription_end_date))
+    return users
 
-    cursor.executemany("INSERT INTO visitor (full_name, age, ticket_type) VALUES (%s, %s, %s)", visitors)
-    conn.commit()
-    print(f"Добавлено {n} посетителей")
-
-# Функция для заполнения таблицы Exhibit
-def insert_exhibits(n):
-    exhibits = []
+# Функция для генерации случайных данных для таблицы t_article
+def generate_articles(n):
+    fake = faker.Faker()
+    articles = []
     for _ in range(n):
-        name = fake.word().capitalize() + " Exhibit"
-        era = random.choice(["Ancient", "Medieval", "Renaissance", "Modern"])
-        description = fake.sentence()
-        exhibits.append((name, era, description))
+        article_id = str(uuid.uuid4())
+        doi = f"10.{random.randint(1000, 9999)}/{fake.uuid4()[:8]}"
+        title = fake.sentence(nb_words=6)
+        author = fake.name()
+        publication_year = random.randint(2000, 2024)
+        articles.append((article_id, doi, title, author, publication_year))
+    return articles
 
-    cursor.executemany("INSERT INTO exhibit (name, era, description) VALUES (%s, %s, %s)", exhibits)
-    conn.commit()
-    print(f"Добавлено {n} экспонатов")
-
-# Функция для заполнения таблицы Tour
-def insert_tours(n):
-    cursor.execute("SELECT id FROM visitor")
-    visitor_ids = [row[0] for row in cursor.fetchall()]
-
-    cursor.execute("SELECT id FROM exhibit")
-    exhibit_ids = [row[0] for row in cursor.fetchall()]
-
-    if not visitor_ids or not exhibit_ids:
-        print("Ошибка: Сначала добавьте посетителей и экспонаты!")
-        return
-
-    tours = []
+# Функция для генерации случайных данных для таблицы t_download
+def generate_downloads(users, articles, n):
+    downloads = []
+    formats = ["PDF", "HTML"]
     for _ in range(n):
-        exhibit_id = random.choice(exhibit_ids)
-        visitor_id = random.choice(visitor_ids)
-        date = fake.date_between(start_date="-1y", end_date="today")
-        guide_name = fake.name() if random.random() > 0.5 else None
-        tours.append((exhibit_id, visitor_id, date, guide_name))
+        user_id = random.choice(users)[0]
+        article_id = random.choice(articles)[0]
+        download_date = datetime.now() - timedelta(days=random.randint(1, 30))
+        format_ = random.choice(formats)
+        downloads.append((str(uuid.uuid4()), user_id, article_id, download_date, format_))
+    return downloads
 
-    cursor.executemany("INSERT INTO tour (exhibit_id, visitor_id, date, guide_name) VALUES (%s, %s, %s, %s)", tours)
+# Основная функция для заполнения базы данных
+def populate_db():
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # Генерируем данные
+    users = generate_users(10)
+    articles = generate_articles(20)
+    downloads = generate_downloads(users, articles, 50)
+
+    # Вставляем данные в таблицу t_user
+    for user in users:
+        cursor.execute("""
+            INSERT INTO t_user (id, login, university, subscription_end_date)
+            VALUES (%s, %s, %s, %s)
+        """, user)
+
+    # Вставляем данные в таблицу t_article
+    for article in articles:
+        cursor.execute("""
+            INSERT INTO t_article (id, doi, title, author, publication_year)
+            VALUES (%s, %s, %s, %s, %s)
+        """, article)
+
+    # Вставляем данные в таблицу t_download
+    for download in downloads:
+        cursor.execute("""
+            INSERT INTO t_download (id, user_id, article_id, download_date, format)
+            VALUES (%s, %s, %s, %s, %s)
+        """, download)
+
+    # Сохраняем изменения и закрываем соединение
     conn.commit()
-    print(f"Добавлено {n} экскурсий")
+    cursor.close()
+    conn.close()
 
-# Заполняем таблицы
-insert_visitors(10)   # 10 посетителей
-insert_exhibits(5)    # 5 экспонатов
-insert_tours(15)      # 15 экскурсий
-
-# Закрываем соединение
-cursor.close()
-conn.close()
-print("Генерация данных завершена.")
+# Запуск функции
+if __name__ == "__main__":
+    populate_db()

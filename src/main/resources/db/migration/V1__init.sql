@@ -1,26 +1,45 @@
--- Создание таблицы Visitor с BIGSERIAL для id
-CREATE TABLE IF NOT EXISTS visitor (
-    id BIGSERIAL PRIMARY KEY,
-    full_name VARCHAR(255) NOT NULL,
-    age INT NOT NULL,
-    ticket_type VARCHAR(50) NOT NULL
-);
-
--- Создание таблицы Exhibit с BIGSERIAL для id
-CREATE TABLE IF NOT EXISTS exhibit (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    era VARCHAR(255) NOT NULL,
-    description TEXT
-);
-
--- Создание таблицы Tour с BIGSERIAL для id и BIGINT для внешних ключей
-CREATE TABLE IF NOT EXISTS tour (
-    id BIGSERIAL PRIMARY KEY,
-    exhibit_id BIGINT NOT NULL,
-    visitor_id BIGINT NOT NULL,
-    date DATE NOT NULL,
-    guide_name VARCHAR(255),
-    FOREIGN KEY (exhibit_id) REFERENCES exhibit(id),
-    FOREIGN KEY (visitor_id) REFERENCES visitor(id)
-);
+---- Включаем расширение pgcrypto для генерации UUID
+--CREATE EXTENSION IF NOT EXISTS pgcrypto;
+--
+---- Удаляем старые таблицы, если они существуют (в правильном порядке, чтобы избежать ошибок внешних ключей)
+--DROP TABLE IF EXISTS t_download;
+--DROP TABLE IF EXISTS t_article;
+--DROP TABLE IF EXISTS t_user;
+--
+---- Удаляем старые последовательности, если они существуют
+--DROP SEQUENCE IF EXISTS seq_article;
+--DROP SEQUENCE IF EXISTS seq_user;
+--DROP SEQUENCE IF EXISTS seq_download;
+--
+---- Создаем новые последовательности
+--CREATE SEQUENCE seq_article START WITH 1 INCREMENT BY 1;
+--CREATE SEQUENCE seq_user START WITH 1 INCREMENT BY 1;
+--CREATE SEQUENCE seq_download START WITH 1 INCREMENT BY 1;
+--
+---- Создаем таблицу t_article (статья)
+--CREATE TABLE t_article (
+--    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--    doi VARCHAR(255) NOT NULL,
+--    title VARCHAR(255) NOT NULL,
+--    author VARCHAR(255) NOT NULL,
+--    publicationYear INT NOT NULL
+--);
+--
+-- Создаем таблицу t_user (пользователь)
+--CREATE TABLE t_user (
+--    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--    login VARCHAR(255) NOT NULL,
+--    university VARCHAR(255),
+--    subscriptionEndDate DATE
+--);
+--
+---- Создаем таблицу t_download (скачивание)
+--CREATE TABLE t_download (
+--    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--    user_id UUID NOT NULL,
+--    article_id UUID NOT NULL,
+--    downloadDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--    format VARCHAR(10) CHECK (format IN ('PDF', 'HTML')) NOT NULL,
+--    FOREIGN KEY (article_id) REFERENCES t_article (id) ON DELETE CASCADE,
+--    FOREIGN KEY (user_id) REFERENCES t_user (id) ON DELETE CASCADE
+--);
